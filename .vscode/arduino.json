@@ -1,0 +1,4 @@
+{
+    "board": "arduino:avr:uno",
+    "sketch": "MDB_SlaveAutonomous.ino"
+}
