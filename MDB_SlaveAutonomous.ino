@@ -72,6 +72,43 @@ void enableSPISlave(SPISlave slave)
         default : break;
     }  
 }
+/*
+ * 20-02-2016
+ * Convert byte array with size of (4..10) 8-bit hex numbers into a string object
+ * Example: array of 4 hex numbers, which represents 32-bit unsigned long:
+ * {0x36, 0x6B, 0x1B, 0xDB} represents a 32-bit (4-word) number 0xDB1B6B36, which is converted into a string "63B6B1BD"
+ * This string represented hex number appears reversed for human recognition,
+ * although technically the least 4-bit hex digit accords to the first letter of a string, uuid_str[0]
+ *       and the most significant 4-bit hex digit placed as a last char element (except for '\0')
+ *       
+ * changes the String &uid_str object by pointer, considered as output
+ */
+void getUIDStrHex(MFRC522 *card, String *uid_str)
+{
+    char uuid_str[2 * card->uid.size];
+    
+    // This cycle makes a conversion of the following manner for each 8-bit number: {0x1B} --> {0x0B, 0x01}
+    for (byte i = 0; i < card->uid.size; ++i) {
+        uuid_str[2 * i] = card->uid.uidByte[i] & 0b1111;
+        uuid_str[2 * i + 1] = card->uid.uidByte[i] >> 4;
+    }
+    //uuid_str[2 * card->uid.size + 1] = '\0';  // Add a null-terminator to make it a C-style string
+
+    /* 
+     *  This cycle adds 0x30 or (0x41 - 0x0A) to actual numbers according to ASCII table 
+     *  0x00 to 0x09 digits become '0' to '9' chars (add 0x30)
+     *  0x0A to 0x0F digits become 'A' to 'F' chars in UPPERCASE (add 0x41 and subtract 0x0A)
+     *  Last thing is to copy that into a String object, which is easier to handle
+     */
+    for (byte i = 0; i < 2 * card->uid.size; ++i)
+    {
+        if (uuid_str[i] < 0x0A)
+            uuid_str[i] = (uuid_str[i] + 0x30);
+        else
+            uuid_str[i] = (uuid_str[i] - 0x0A + 0x41);
+        *uid_str += uuid_str[i];
+    }
+}
 
 void setup() {
     // For debug LEDs
@@ -270,40 +307,3 @@ void transactionHandler(void)
     Debug.println(F("Vend Approved"));
 }
 
-/*
- * 20-02-2016
- * Convert byte array with size of (4..10) 8-bit hex numbers into a string object
- * Example: array of 4 hex numbers, which represents 32-bit unsigned long:
- * {0x36, 0x6B, 0x1B, 0xDB} represents a 32-bit (4-word) number 0xDB1B6B36, which is converted into a string "63B6B1BD"
- * This string represented hex number appears reversed for human recognition,
- * although technically the least 4-bit hex digit accords to the first letter of a string, uuid_str[0]
- *       and the most significant 4-bit hex digit placed as a last char element (except for '\0')
- *       
- * changes the String &uid_str object by pointer, considered as output
- */
-void getUIDStrHex(MFRC522 *card, String *uid_str)
-{
-    char uuid_str[2 * card->uid.size];
-    
-    // This cycle makes a conversion of the following manner for each 8-bit number: {0x1B} --> {0x0B, 0x01}
-    for (byte i = 0; i < card->uid.size; ++i) {
-        uuid_str[2 * i] = card->uid.uidByte[i] & 0b1111;
-        uuid_str[2 * i + 1] = card->uid.uidByte[i] >> 4;
-    }
-    //uuid_str[2 * card->uid.size + 1] = '\0';  // Add a null-terminator to make it a C-style string
-
-    /* 
-     *  This cycle adds 0x30 or (0x41 - 0x0A) to actual numbers according to ASCII table 
-     *  0x00 to 0x09 digits become '0' to '9' chars (add 0x30)
-     *  0x0A to 0x0F digits become 'A' to 'F' chars in UPPERCASE (add 0x41 and subtract 0x0A)
-     *  Last thing is to copy that into a String object, which is easier to handle
-     */
-    for (byte i = 0; i < 2 * card->uid.size; ++i)
-    {
-        if (uuid_str[i] < 0x0A)
-            uuid_str[i] = (uuid_str[i] + 0x30);
-        else
-            uuid_str[i] = (uuid_str[i] - 0x0A + 0x41);
-        *uid_str += uuid_str[i];
-    }
-}
