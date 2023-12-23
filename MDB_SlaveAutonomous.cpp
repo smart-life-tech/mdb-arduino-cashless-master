@@ -34,12 +34,6 @@ IPAddress client_ip(192, 168, 137, 232); // Static IP Mode in case of failed DHC
 IPAddress server_address(192, 168, 1, 139);
 uint16_t server_port = 8888;
 EthernetClient server;
-
-/* 
- * 20-02-2016
- * Enables selected SPI slave, disables all others
- * All slave SS pins must be #defined, slave must be of enumerated type
- */
 void enableSPISlave(SPISlave slave)
 {
     // Automatically disable all other SPI Slaves    
@@ -110,60 +104,11 @@ void getUIDStrHex(MFRC522 *card, String *uid_str)
     }
 }
 
-void setup() {
-    // For debug LEDs
-    DDRC |= 0b00111111; // PORTC LEDs for 6 commands in MDB_CommandHandler() switch-case
-    Debug.begin(9600);
-    MDB_Init();
-    sei();    
-    // Init Ethernet Shield    
-    enableSPISlave(W5100);
-    if (Ethernet.begin(client_mac) == 0)  // Start in DHCP Mode
-        Ethernet.begin(client_mac, client_ip); // If DHCP Mode failed, start in Static Mode
-    
-    // Give the Ethernet shield a second to initialize:
-    delay(1000);
-    unsigned long start_time = millis();
-    
-    Debug.println(F("Ethernet ON"));
-    // Init MFRC522 RFID reader
-    enableSPISlave(RC522);
-    mfrc522.PCD_Init();
-}
-
-void loop() {
-//    Debug.println(MDB_DataCount());
-    MDB_CommandHandler();
-    sessionHandler();
-    // without this delay READER_ENABLE command won't be in RX Buffer
-    // Establish the reason of this later (maybe something is wrong with RX buffer reading)
-    if (CSH_GetDeviceState() == CSH_S_DISABLED)
-        delay(10);
-//    switch (c)
-//    {
-//        case 0x30 : CSH_SetPollState(CSH_SESSION_CANCEL_REQUEST); break;
-//        case 0x31 : CSH_SetPollState(CSH_END_SESSION);    break;
-//        default : break;
-//    }        
-}
-
-/*
- * Handler for two Cashless Device active states:
- * ENABLED -- device is waiting for a new card
- * VEND    -- device is busy making transactions with the server
+/* 
+ * 20-02-2016
+ * Enables selected SPI slave, disables all others
+ * All slave SS pins must be #defined, slave must be of enumerated type
  */
-void sessionHandler(void)
-{
-    switch(CSH_GetDeviceState())
-    {
-        case CSH_S_ENABLED : RFID_readerHandler(); break;
-        case CSH_S_VEND    : transactionHandler(); break;
-        default : break;
-    }
-//    char c = Debug.read();
-//    if (c == 0x30)
-//        CSH_SetPollState(CSH_END_SESSION);
-}
 /*
  * Waiting for RFID tag routine
  * I a new card is detected and it is present in the server's database,
@@ -307,3 +252,60 @@ void transactionHandler(void)
     Debug.println(F("Vend Approved"));
 }
 
+
+void sessionHandler(void)
+{
+    switch(CSH_GetDeviceState())
+    {
+        case CSH_S_ENABLED : RFID_readerHandler(); break;
+        case CSH_S_VEND    : transactionHandler(); break;
+        default : break;
+    }
+//    char c = Debug.read();
+//    if (c == 0x30)
+//        CSH_SetPollState(CSH_END_SESSION);
+}
+
+
+void setup() {
+    // For debug LEDs
+    DDRC |= 0b00111111; // PORTC LEDs for 6 commands in MDB_CommandHandler() switch-case
+    Debug.begin(9600);
+    MDB_Init();
+    sei();    
+    // Init Ethernet Shield    
+    enableSPISlave(W5100);
+    if (Ethernet.begin(client_mac) == 0)  // Start in DHCP Mode
+        Ethernet.begin(client_mac, client_ip); // If DHCP Mode failed, start in Static Mode
+    
+    // Give the Ethernet shield a second to initialize:
+    delay(1000);
+    unsigned long start_time = millis();
+    
+    Debug.println(F("Ethernet ON"));
+    // Init MFRC522 RFID reader
+    enableSPISlave(RC522);
+    mfrc522.PCD_Init();
+}
+
+void loop() {
+//    Debug.println(MDB_DataCount());
+    MDB_CommandHandler();
+    sessionHandler();
+    // without this delay READER_ENABLE command won't be in RX Buffer
+    // Establish the reason of this later (maybe something is wrong with RX buffer reading)
+    if (CSH_GetDeviceState() == CSH_S_DISABLED)
+        delay(10);
+//    switch (c)
+//    {
+//        case 0x30 : CSH_SetPollState(CSH_SESSION_CANCEL_REQUEST); break;
+//        case 0x31 : CSH_SetPollState(CSH_END_SESSION);    break;
+//        default : break;
+//    }        
+}
+
+/*
+ * Handler for two Cashless Device active states:
+ * ENABLED -- device is waiting for a new card
+ * VEND    -- device is busy making transactions with the server
+ */
